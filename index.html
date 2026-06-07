@@ -11,7 +11,7 @@
 <style>
 
 /* =========================
-   WYGLĄD CAŁEJ STRONY
+   WYGLĄD STRONY
 ========================= */
 
 body{
@@ -30,7 +30,7 @@ h1{
 }
 
 /* =========================
-   OKNO DO WKLEJANIA DANYCH
+   OKNO WKLEJANIA DANYCH
 ========================= */
 
 textarea{
@@ -45,7 +45,7 @@ textarea{
 }
 
 /* =========================
-   SEKCJA PRZYCISKÓW
+   PRZYCISKI
 ========================= */
 
 .buttons{
@@ -55,10 +55,6 @@ textarea{
     gap:10px;
     flex-wrap:wrap;
 }
-
-/* =========================
-   WYGLĄD PRZYCISKÓW
-========================= */
 
 button{
     padding:12px 18px;
@@ -75,7 +71,7 @@ button:hover{
 }
 
 /* =========================
-   SEKCJA WYNIKÓW
+   SEKCJE WYNIKÓW
 ========================= */
 
 .section{
@@ -94,7 +90,7 @@ button:hover{
 table{
     border-collapse:collapse;
     width:100%;
-    min-width:700px;
+    min-width:900px;
 }
 
 th, td{
@@ -109,7 +105,7 @@ th{
 }
 
 /* =========================
-   KOLORY DUBLI / TRIPLI
+   KOLORY POWTÓRZEŃ
 ========================= */
 
 .double{
@@ -156,7 +152,7 @@ Wklej dane w formacie:
 </pre>
 
 <!-- =========================
-     OKNO DO WKLEJANIA DANYCH
+     OKNO DANYCH
 ========================= -->
 
 <textarea id="inputData" placeholder="Wklej dane tutaj..."></textarea>
@@ -172,7 +168,7 @@ Wklej dane w formacie:
         Sortuj od najmniejszej do największej
     </button>
 
-    <!-- DUBLE / TRIPLE -->
+    <!-- DUBLE -->
     <button onclick="showDuplicates()">
         Pokaż zdublowane poziomy
     </button>
@@ -200,16 +196,12 @@ Wklej dane w formacie:
 
 /* =====================================================
    FUNKCJA:
-   WCZYTANIE I PRZYGOTOWANIE DANYCH
+   WCZYTYWANIE DANYCH
 ===================================================== */
 
 function parseInput(){
 
-    // Pobranie tekstu z okna
-
     const raw = document.getElementById("inputData").value.trim();
-
-    // Jeśli brak danych
 
     if(!raw){
 
@@ -217,15 +209,9 @@ function parseInput(){
         return [];
     }
 
-    // Podział na linie
-
     const lines = raw.split("\n");
 
-    // Tablica wynikowa
-
     const data = [];
-
-    // Analiza każdej linii
 
     for(let line of lines){
 
@@ -233,7 +219,7 @@ function parseInput(){
 
         if(!line) continue;
 
-        // Rozdzielenie daty i poziomu
+        // Rozdzielenie po spacjach/tabach
 
         const parts = line.split(/\s+/);
 
@@ -247,27 +233,20 @@ function parseInput(){
 
         const normalized = levelRaw.replace(",", ".");
 
-        // Zamiana na liczbę
+        // Liczba do obliczeń
 
         const levelNumber = Number(normalized);
 
-        // Jeśli nie jest liczbą
-
         if(isNaN(levelNumber)) continue;
-
-        // Dodanie do tablicy
 
         data.push({
 
             date: date,
 
-            // Oryginalny zapis poziomu
             levelRaw: levelRaw,
 
-            // Wersja znormalizowana
             levelNormalized: normalized,
 
-            // Liczba do sortowania
             levelNumber: levelNumber
         });
     }
@@ -277,7 +256,7 @@ function parseInput(){
 
 /* =====================================================
    FUNKCJA:
-   AKTUALIZACJA STATYSTYK
+   STATYSTYKI
 ===================================================== */
 
 function updateStats(total, unique, duplicates){
@@ -293,12 +272,10 @@ function updateStats(total, unique, duplicates){
 
 /* =====================================================
    FUNKCJA:
-   SORTOWANIE OD NAJMNIEJSZEJ DO NAJWIĘKSZEJ
+   SORTOWANIE + RÓŻNICE
 ===================================================== */
 
 function sortLevels(){
-
-    // Pobranie danych
 
     const data = parseInput();
 
@@ -309,8 +286,6 @@ function sortLevels(){
     const sorted = [...data].sort(
         (a,b)=>a.levelNumber - b.levelNumber
     );
-
-    // Budowa tabeli HTML
 
     let html = `
 
@@ -324,6 +299,7 @@ function sortLevels(){
                 <tr>
                     <th>Data</th>
                     <th>Poziom</th>
+                    <th>Różnica</th>
                 </tr>
             </thead>
 
@@ -332,12 +308,28 @@ function sortLevels(){
 
     // Dodawanie wierszy
 
-    for(const row of sorted){
+    for(let i = 0; i < sorted.length; i++){
+
+        const row = sorted[i];
+
+        let difference = "---";
+
+        // Obliczanie różnicy
+
+        if(i > 0){
+
+            const previous = sorted[i - 1];
+
+            difference = (
+                row.levelNumber - previous.levelNumber
+            ).toFixed(5);
+        }
 
         html += `
             <tr>
                 <td>${row.date}</td>
                 <td>${row.levelRaw}</td>
+                <td>${difference}</td>
             </tr>
         `;
     }
@@ -349,17 +341,11 @@ function sortLevels(){
     </div>
     `;
 
-    // Wyświetlenie wyników
-
     document.getElementById("results").innerHTML = html;
-
-    // Liczenie unikalnych poziomów
 
     const unique = new Set(
         sorted.map(x=>x.levelNormalized)
     ).size;
-
-    // Aktualizacja statystyk
 
     updateStats(
         sorted.length,
@@ -370,28 +356,22 @@ function sortLevels(){
 
 /* =====================================================
    FUNKCJA:
-   POKAZYWANIE DUBLI / TRIPLI / CZWORAKÓW+
+   DUBLE / TRIPLE / CZWORAKI+
 ===================================================== */
 
 function showDuplicates(){
-
-    // Pobranie danych
 
     const data = parseInput();
 
     if(data.length === 0) return;
 
-    // Obiekt grupujący poziomy
-
     const map = {};
 
-    // Grupowanie danych
+    // Grupowanie poziomów
 
     for(const row of data){
 
         const key = row.levelNormalized;
-
-        // Jeśli poziomu jeszcze nie ma
 
         if(!map[key]){
 
@@ -403,16 +383,12 @@ function showDuplicates(){
             };
         }
 
-        // Dodanie daty
-
         map[key].dates.push(row.date);
     }
 
-    // Tablica wynikowa
-
     const duplicates = [];
 
-    // Szukanie poziomów >= 2
+    // Szukanie wszystkiego >=2
 
     for(const key in map){
 
@@ -437,7 +413,7 @@ function showDuplicates(){
         (a,b)=>a.numeric - b.numeric
     );
 
-    // Szukanie maksymalnej liczby dat
+    // Maksymalna ilość dat
 
     let maxDates = 0;
 
@@ -448,8 +424,6 @@ function showDuplicates(){
             maxDates = x.dates.length;
         }
     });
-
-    // Budowa tabeli
 
     let html = `
 
@@ -480,13 +454,13 @@ function showDuplicates(){
             <tbody>
     `;
 
-    // Dodawanie wierszy
+    // Wiersze
 
     for(const row of duplicates){
 
         let rowClass = "";
 
-        // Kolory zależne od ilości
+        // Kolory
 
         if(row.count === 2){
 
@@ -512,7 +486,7 @@ function showDuplicates(){
             <td>${row.count}</td>
         `;
 
-        // Dodawanie dat
+        // Daty
 
         for(let i=0; i<maxDates; i++){
 
@@ -529,11 +503,7 @@ function showDuplicates(){
     </div>
     `;
 
-    // Wyświetlenie tabeli
-
     document.getElementById("results").innerHTML = html;
-
-    // Statystyki
 
     const unique = new Set(
         data.map(x=>x.levelNormalized)
@@ -548,24 +518,18 @@ function showDuplicates(){
 
 /* =====================================================
    FUNKCJA:
-   KOPIOWANIE WYNIKU
+   KOPIOWANIE WYNIKÓW
 ===================================================== */
 
 function copyResults(){
 
-    // Pobranie wyników
-
     const results = document.getElementById("results");
-
-    // Jeśli brak wyników
 
     if(!results.innerText.trim()){
 
         alert("Brak wyników do skopiowania.");
         return;
     }
-
-    // Kopiowanie do schowka
 
     navigator.clipboard.writeText(results.innerText)
 
