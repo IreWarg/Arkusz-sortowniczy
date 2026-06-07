@@ -1,103 +1,144 @@
 <!DOCTYPE html>
 <html lang="pl">
+
 <head>
+
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 
 <title>Sorter Poziomów Cenowych</title>
 
 <style>
-   body{
-       font-family: Arial, sans-serif;
-       margin:20px;
-       background:#f4f4f4;
-       color:#222;
-   }
 
-   h1{
-       margin-bottom:10px;
-   }
+/* =========================
+   WYGLĄD CAŁEJ STRONY
+========================= */
 
-   textarea{
-       width:100%;
-       height:220px;
-       padding:10px;
-       font-size:14px;
-       border:1px solid #ccc;
-       border-radius:8px;
-       resize:vertical;
-       background:white;
-   }
+body{
+    font-family: Arial, sans-serif;
+    margin:20px;
+    background:#f4f4f4;
+    color:#222;
+}
 
-   .buttons{
-       margin-top:15px;
-       margin-bottom:20px;
-       display:flex;
-       gap:10px;
-       flex-wrap:wrap;
-   }
+/* =========================
+   TYTUŁ
+========================= */
 
-   button{
-       padding:12px 18px;
-       border:none;
-       border-radius:8px;
-       cursor:pointer;
-       font-size:14px;
-       background:#1976d2;
-       color:white;
-   }
+h1{
+    margin-bottom:10px;
+}
 
-   button:hover{
-       opacity:0.9;
-   }
+/* =========================
+   OKNO DO WKLEJANIA DANYCH
+========================= */
 
-   .section{
-       background:white;
-       padding:15px;
-       border-radius:10px;
-       margin-top:25px;
-       overflow:auto;
-       box-shadow:0 2px 8px rgba(0,0,0,0.08);
-   }
+textarea{
+    width:100%;
+    height:220px;
+    padding:10px;
+    font-size:14px;
+    border:1px solid #ccc;
+    border-radius:8px;
+    resize:vertical;
+    background:white;
+}
 
-   table{
-       border-collapse:collapse;
-       width:100%;
-       min-width:700px;
-   }
+/* =========================
+   SEKCJA PRZYCISKÓW
+========================= */
 
-   th, td{
-       border:1px solid #ddd;
-       padding:8px;
-       text-align:left;
-       font-size:14px;
-   }
+.buttons{
+    margin-top:15px;
+    margin-bottom:20px;
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+}
 
-   th{
-       background:#f0f0f0;
-   }
+/* =========================
+   WYGLĄD PRZYCISKÓW
+========================= */
 
-   .double{
-       background:#fff59d;
-   }
+button{
+    padding:12px 18px;
+    border:none;
+    border-radius:8px;
+    cursor:pointer;
+    font-size:14px;
+    background:#1976d2;
+    color:white;
+}
 
-   .triple{
-       background:#ffcc80;
-   }
+button:hover{
+    opacity:0.9;
+}
 
-   .quad{
-       background:#ef9a9a;
-   }
+/* =========================
+   SEKCJA WYNIKÓW
+========================= */
 
-   .many{
-       background:#ce93d8;
-   }
+.section{
+    background:white;
+    padding:15px;
+    border-radius:10px;
+    margin-top:25px;
+    overflow:auto;
+    box-shadow:0 2px 8px rgba(0,0,0,0.08);
+}
 
-   .stats{
-       margin-top:10px;
-       font-size:14px;
-   }
+/* =========================
+   TABELA
+========================= */
+
+table{
+    border-collapse:collapse;
+    width:100%;
+    min-width:700px;
+}
+
+th, td{
+    border:1px solid #ddd;
+    padding:8px;
+    text-align:left;
+    font-size:14px;
+}
+
+th{
+    background:#f0f0f0;
+}
+
+/* =========================
+   KOLORY DUBLI / TRIPLI
+========================= */
+
+.double{
+    background:#fff59d;
+}
+
+.triple{
+    background:#ffcc80;
+}
+
+.quad{
+    background:#ef9a9a;
+}
+
+.many{
+    background:#ce93d8;
+}
+
+/* =========================
+   STATYSTYKI
+========================= */
+
+.stats{
+    margin-top:10px;
+    font-size:14px;
+}
+
 </style>
+
 </head>
 
 <body>
@@ -114,244 +155,433 @@ Wklej dane w formacie:
 2020.02.12    0.76549
 </pre>
 
+<!-- =========================
+     OKNO DO WKLEJANIA DANYCH
+========================= -->
+
 <textarea id="inputData" placeholder="Wklej dane tutaj..."></textarea>
 
+<!-- =========================
+     PRZYCISKI
+========================= -->
+
 <div class="buttons">
-   <button onclick="sortLevels()">Sortuj od najmniejszej do największej</button>
-   <button onclick="showDuplicates()">Pokaż zdublowane poziomy</button>
+
+    <!-- SORTOWANIE -->
+    <button onclick="sortLevels()">
+        Sortuj od najmniejszej do największej
+    </button>
+
+    <!-- DUBLE / TRIPLE -->
+    <button onclick="showDuplicates()">
+        Pokaż zdublowane poziomy
+    </button>
+
+    <!-- KOPIOWANIE -->
+    <button onclick="copyResults()">
+        Kopiuj wynik
+    </button>
+
 </div>
 
+<!-- =========================
+     STATYSTYKI
+========================= -->
+
 <div class="stats" id="stats"></div>
+
+<!-- =========================
+     WYNIKI
+========================= -->
 
 <div id="results"></div>
 
 <script>
 
+/* =====================================================
+   FUNKCJA:
+   WCZYTANIE I PRZYGOTOWANIE DANYCH
+===================================================== */
+
 function parseInput(){
 
-   const raw = document.getElementById("inputData").value.trim();
+    // Pobranie tekstu z okna
 
-   if(!raw){
-       alert("Wklej dane.");
-       return [];
-   }
+    const raw = document.getElementById("inputData").value.trim();
 
-   const lines = raw.split("\n");
+    // Jeśli brak danych
 
-   const data = [];
+    if(!raw){
 
-   for(let line of lines){
+        alert("Wklej dane.");
+        return [];
+    }
 
-       line = line.trim();
+    // Podział na linie
 
-       if(!line) continue;
+    const lines = raw.split("\n");
 
-       const parts = line.split(/\s+/);
+    // Tablica wynikowa
 
-       if(parts.length < 2) continue;
+    const data = [];
 
-       const date = parts[0];
+    // Analiza każdej linii
 
-       const levelRaw = parts[1];
+    for(let line of lines){
 
-       const normalized = levelRaw.replace(",", ".");
+        line = line.trim();
 
-       const levelNumber = Number(normalized);
+        if(!line) continue;
 
-       if(isNaN(levelNumber)) continue;
+        // Rozdzielenie daty i poziomu
 
-       data.push({
-           date: date,
-           levelRaw: levelRaw,
-           levelNormalized: normalized,
-           levelNumber: levelNumber
-       });
-   }
+        const parts = line.split(/\s+/);
 
-   return data;
+        if(parts.length < 2) continue;
+
+        const date = parts[0];
+
+        const levelRaw = parts[1];
+
+        // Zamiana przecinka na kropkę
+
+        const normalized = levelRaw.replace(",", ".");
+
+        // Zamiana na liczbę
+
+        const levelNumber = Number(normalized);
+
+        // Jeśli nie jest liczbą
+
+        if(isNaN(levelNumber)) continue;
+
+        // Dodanie do tablicy
+
+        data.push({
+
+            date: date,
+
+            // Oryginalny zapis poziomu
+            levelRaw: levelRaw,
+
+            // Wersja znormalizowana
+            levelNormalized: normalized,
+
+            // Liczba do sortowania
+            levelNumber: levelNumber
+        });
+    }
+
+    return data;
 }
+
+/* =====================================================
+   FUNKCJA:
+   AKTUALIZACJA STATYSTYK
+===================================================== */
 
 function updateStats(total, unique, duplicates){
 
-   document.getElementById("stats").innerHTML = `
-       <b>Wiersze wejściowe:</b> ${total}
-       &nbsp;&nbsp; | &nbsp;&nbsp;
-       <b>Unikalne poziomy:</b> ${unique}
-       &nbsp;&nbsp; | &nbsp;&nbsp;
-       <b>Poziomy zdublowane:</b> ${duplicates}
-   `;
+    document.getElementById("stats").innerHTML = `
+        <b>Wiersze wejściowe:</b> ${total}
+        &nbsp;&nbsp; | &nbsp;&nbsp;
+        <b>Unikalne poziomy:</b> ${unique}
+        &nbsp;&nbsp; | &nbsp;&nbsp;
+        <b>Poziomy zdublowane:</b> ${duplicates}
+    `;
 }
+
+/* =====================================================
+   FUNKCJA:
+   SORTOWANIE OD NAJMNIEJSZEJ DO NAJWIĘKSZEJ
+===================================================== */
 
 function sortLevels(){
 
-   const data = parseInput();
+    // Pobranie danych
 
-   if(data.length === 0) return;
+    const data = parseInput();
 
-   const sorted = [...data].sort((a,b)=>a.levelNumber - b.levelNumber);
+    if(data.length === 0) return;
 
-   let html = `
-   <div class="section">
-       <h2>Wynik sortowania</h2>
+    // Sortowanie numeryczne
 
-       <table>
-           <thead>
-               <tr>
-                   <th>Data</th>
-                   <th>Poziom</th>
-               </tr>
-           </thead>
-           <tbody>
-   `;
+    const sorted = [...data].sort(
+        (a,b)=>a.levelNumber - b.levelNumber
+    );
 
-   for(const row of sorted){
+    // Budowa tabeli HTML
 
-       html += `
-           <tr>
-               <td>${row.date}</td>
-               <td>${row.levelRaw}</td>
-           </tr>
-       `;
-   }
+    let html = `
 
-   html += `
-           </tbody>
-       </table>
-   </div>
-   `;
+    <div class="section">
 
-   document.getElementById("results").innerHTML = html;
+        <h2>Wynik sortowania</h2>
 
-   const unique = new Set(sorted.map(x=>x.levelNormalized)).size;
+        <table>
 
-   updateStats(
-       sorted.length,
-       unique,
-       sorted.length - unique
-   );
+            <thead>
+                <tr>
+                    <th>Data</th>
+                    <th>Poziom</th>
+                </tr>
+            </thead>
+
+            <tbody>
+    `;
+
+    // Dodawanie wierszy
+
+    for(const row of sorted){
+
+        html += `
+            <tr>
+                <td>${row.date}</td>
+                <td>${row.levelRaw}</td>
+            </tr>
+        `;
+    }
+
+    html += `
+            </tbody>
+        </table>
+
+    </div>
+    `;
+
+    // Wyświetlenie wyników
+
+    document.getElementById("results").innerHTML = html;
+
+    // Liczenie unikalnych poziomów
+
+    const unique = new Set(
+        sorted.map(x=>x.levelNormalized)
+    ).size;
+
+    // Aktualizacja statystyk
+
+    updateStats(
+        sorted.length,
+        unique,
+        sorted.length - unique
+    );
 }
+
+/* =====================================================
+   FUNKCJA:
+   POKAZYWANIE DUBLI / TRIPLI / CZWORAKÓW+
+===================================================== */
 
 function showDuplicates(){
 
-   const data = parseInput();
+    // Pobranie danych
 
-   if(data.length === 0) return;
+    const data = parseInput();
 
-   const map = {};
+    if(data.length === 0) return;
 
-   for(const row of data){
+    // Obiekt grupujący poziomy
 
-       const key = row.levelNormalized;
+    const map = {};
 
-       if(!map[key]){
+    // Grupowanie danych
 
-           map[key] = {
-               level: row.levelRaw,
-               dates: []
-           };
-       }
+    for(const row of data){
 
-       map[key].dates.push(row.date);
-   }
+        const key = row.levelNormalized;
 
-   const duplicates = [];
+        // Jeśli poziomu jeszcze nie ma
 
-   for(const key in map){
+        if(!map[key]){
 
-       if(map[key].dates.length >= 2){
+            map[key] = {
 
-           duplicates.push({
-               level: map[key].level,
-               count: map[key].dates.length,
-               dates: map[key].dates,
-               numeric: Number(key)
-           });
-       }
-   }
+                level: row.levelRaw,
 
-   duplicates.sort((a,b)=>a.numeric - b.numeric);
+                dates: []
+            };
+        }
 
-   let maxDates = 0;
+        // Dodanie daty
 
-   duplicates.forEach(x=>{
-       if(x.dates.length > maxDates){
-           maxDates = x.dates.length;
-       }
-   });
+        map[key].dates.push(row.date);
+    }
 
-   let html = `
-   <div class="section">
-       <h2>Zdublowane poziomy</h2>
+    // Tablica wynikowa
 
-       <table>
-           <thead>
-               <tr>
-                   <th>Poziom</th>
-                   <th>Ilość</th>
-   `;
+    const duplicates = [];
 
-   for(let i=1; i<=maxDates; i++){
+    // Szukanie poziomów >= 2
 
-       html += `<th>Data ${i}</th>`;
-   }
+    for(const key in map){
 
-   html += `
-               </tr>
-           </thead>
-           <tbody>
-   `;
+        if(map[key].dates.length >= 2){
 
-   for(const row of duplicates){
+            duplicates.push({
 
-       let rowClass = "";
+                level: map[key].level,
 
-       if(row.count === 2){
-           rowClass = "double";
-       }
-       else if(row.count === 3){
-           rowClass = "triple";
-       }
-       else if(row.count === 4){
-           rowClass = "quad";
-       }
-       else{
-           rowClass = "many";
-       }
+                count: map[key].dates.length,
 
-       html += `<tr class="${rowClass}">`;
+                dates: map[key].dates,
 
-       html += `
-           <td>${row.level}</td>
-           <td>${row.count}</td>
-       `;
+                numeric: Number(key)
+            });
+        }
+    }
 
-       for(let i=0; i<maxDates; i++){
+    // Sortowanie wyników
 
-           html += `<td>${row.dates[i] || ""}</td>`;
-       }
+    duplicates.sort(
+        (a,b)=>a.numeric - b.numeric
+    );
 
-       html += `</tr>`;
-   }
+    // Szukanie maksymalnej liczby dat
 
-   html += `
-           </tbody>
-       </table>
-   </div>
-   `;
+    let maxDates = 0;
 
-   document.getElementById("results").innerHTML = html;
+    duplicates.forEach(x=>{
 
-   const unique = new Set(data.map(x=>x.levelNormalized)).size;
+        if(x.dates.length > maxDates){
 
-   updateStats(
-       data.length,
-       unique,
-       data.length - unique
-   );
+            maxDates = x.dates.length;
+        }
+    });
+
+    // Budowa tabeli
+
+    let html = `
+
+    <div class="section">
+
+        <h2>Zdublowane poziomy</h2>
+
+        <table>
+
+            <thead>
+                <tr>
+
+                    <th>Poziom</th>
+                    <th>Ilość</th>
+    `;
+
+    // Dynamiczne kolumny dat
+
+    for(let i=1; i<=maxDates; i++){
+
+        html += `<th>Data ${i}</th>`;
+    }
+
+    html += `
+                </tr>
+            </thead>
+
+            <tbody>
+    `;
+
+    // Dodawanie wierszy
+
+    for(const row of duplicates){
+
+        let rowClass = "";
+
+        // Kolory zależne od ilości
+
+        if(row.count === 2){
+
+            rowClass = "double";
+        }
+        else if(row.count === 3){
+
+            rowClass = "triple";
+        }
+        else if(row.count === 4){
+
+            rowClass = "quad";
+        }
+        else{
+
+            rowClass = "many";
+        }
+
+        html += `<tr class="${rowClass}">`;
+
+        html += `
+            <td>${row.level}</td>
+            <td>${row.count}</td>
+        `;
+
+        // Dodawanie dat
+
+        for(let i=0; i<maxDates; i++){
+
+            html += `<td>${row.dates[i] || ""}</td>`;
+        }
+
+        html += `</tr>`;
+    }
+
+    html += `
+            </tbody>
+        </table>
+
+    </div>
+    `;
+
+    // Wyświetlenie tabeli
+
+    document.getElementById("results").innerHTML = html;
+
+    // Statystyki
+
+    const unique = new Set(
+        data.map(x=>x.levelNormalized)
+    ).size;
+
+    updateStats(
+        data.length,
+        unique,
+        data.length - unique
+    );
+}
+
+/* =====================================================
+   FUNKCJA:
+   KOPIOWANIE WYNIKU
+===================================================== */
+
+function copyResults(){
+
+    // Pobranie wyników
+
+    const results = document.getElementById("results");
+
+    // Jeśli brak wyników
+
+    if(!results.innerText.trim()){
+
+        alert("Brak wyników do skopiowania.");
+        return;
+    }
+
+    // Kopiowanie do schowka
+
+    navigator.clipboard.writeText(results.innerText)
+
+        .then(() => {
+
+            alert("Wynik skopiowany.");
+        })
+
+        .catch(() => {
+
+            alert("Nie udało się skopiować.");
+        });
 }
 
 </script>
 
 </body>
-</html>
 
+</html>
