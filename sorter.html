@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+
+<title>Sorter Poziomów Cenowych</title>
+
+<style>
+   body{
+       font-family: Arial, sans-serif;
+       margin:20px;
+       background:#f4f4f4;
+       color:#222;
+   }
+
+   h1{
+       margin-bottom:10px;
+   }
+
+   textarea{
+       width:100%;
+       height:220px;
+       padding:10px;
+       font-size:14px;
+       border:1px solid #ccc;
+       border-radius:8px;
+       resize:vertical;
+       background:white;
+   }
+
+   .buttons{
+       margin-top:15px;
+       margin-bottom:20px;
+       display:flex;
+       gap:10px;
+       flex-wrap:wrap;
+   }
+
+   button{
+       padding:12px 18px;
+       border:none;
+       border-radius:8px;
+       cursor:pointer;
+       font-size:14px;
+       background:#1976d2;
+       color:white;
+   }
+
+   button:hover{
+       opacity:0.9;
+   }
+
+   .section{
+       background:white;
+       padding:15px;
+       border-radius:10px;
+       margin-top:25px;
+       overflow:auto;
+       box-shadow:0 2px 8px rgba(0,0,0,0.08);
+   }
+
+   table{
+       border-collapse:collapse;
+       width:100%;
+       min-width:700px;
+   }
+
+   th, td{
+       border:1px solid #ddd;
+       padding:8px;
+       text-align:left;
+       font-size:14px;
+   }
+
+   th{
+       background:#f0f0f0;
+   }
+
+   .double{
+       background:#fff59d;
+   }
+
+   .triple{
+       background:#ffcc80;
+   }
+
+   .quad{
+       background:#ef9a9a;
+   }
+
+   .many{
+       background:#ce93d8;
+   }
+
+   .stats{
+       margin-top:10px;
+       font-size:14px;
+   }
+</style>
+</head>
+
+<body>
+
+<h1>Sorter Poziomów Cenowych</h1>
+
+<p>
+Wklej dane w formacie:
+</p>
+
+<pre>
+2025.07.28    0.89496
+2022.09.01    0.89496
+2020.02.12    0.76549
+</pre>
+
+<textarea id="inputData" placeholder="Wklej dane tutaj..."></textarea>
+
+<div class="buttons">
+   <button onclick="sortLevels()">Sortuj od najmniejszej do największej</button>
+   <button onclick="showDuplicates()">Pokaż zdublowane poziomy</button>
+</div>
+
+<div class="stats" id="stats"></div>
+
+<div id="results"></div>
+
+<script>
+
+function parseInput(){
+
+   const raw = document.getElementById("inputData").value.trim();
+
+   if(!raw){
+       alert("Wklej dane.");
+       return [];
+   }
+
+   const lines = raw.split("\n");
+
+   const data = [];
+
+   for(let line of lines){
+
+       line = line.trim();
+
+       if(!line) continue;
+
+       const parts = line.split(/\s+/);
+
+       if(parts.length < 2) continue;
+
+       const date = parts[0];
+
+       const levelRaw = parts[1];
+
+       const normalized = levelRaw.replace(",", ".");
+
+       const levelNumber = Number(normalized);
+
+       if(isNaN(levelNumber)) continue;
+
+       data.push({
+           date: date,
+           levelRaw: levelRaw,
+           levelNormalized: normalized,
+           levelNumber: levelNumber
+       });
+   }
+
+   return data;
+}
+
+function updateStats(total, unique, duplicates){
+
+   document.getElementById("stats").innerHTML = `
+       <b>Wiersze wejściowe:</b> ${total}
+       &nbsp;&nbsp; | &nbsp;&nbsp;
+       <b>Unikalne poziomy:</b> ${unique}
+       &nbsp;&nbsp; | &nbsp;&nbsp;
+       <b>Poziomy zdublowane:</b> ${duplicates}
+   `;
+}
+
+function sortLevels(){
+
+   const data = parseInput();
+
+   if(data.length === 0) return;
+
+   const sorted = [...data].sort((a,b)=>a.levelNumber - b.levelNumber);
+
+   let html = `
+   <div class="section">
+       <h2>Wynik sortowania</h2>
+
+       <table>
+           <thead>
+               <tr>
+                   <th>Data</th>
+                   <th>Poziom</th>
+               </tr>
+           </thead>
+           <tbody>
+   `;
+
+   for(const row of sorted){
+
+       html += `
+           <tr>
+               <td>${row.date}</td>
+               <td>${row.levelRaw}</td>
+           </tr>
+       `;
+   }
+
+   html += `
+           </tbody>
+       </table>
+   </div>
+   `;
+
+   document.getElementById("results").innerHTML = html;
+
+   const unique = new Set(sorted.map(x=>x.levelNormalized)).size;
+
+   updateStats(
+       sorted.length,
+       unique,
+       sorted.length - unique
+   );
+}
+
+function showDuplicates(){
+
+   const data = parseInput();
+
+   if(data.length === 0) return;
+
+   const map = {};
+
+   for(const row of data){
+
+       const key = row.levelNormalized;
+
+       if(!map[key]){
+
+           map[key] = {
+               level: row.levelRaw,
+               dates: []
+           };
+       }
+
+       map[key].dates.push(row.date);
+   }
+
+   const duplicates = [];
+
+   for(const key in map){
+
+       if(map[key].dates.length >= 2){
+
+           duplicates.push({
+               level: map[key].level,
+               count: map[key].dates.length,
+               dates: map[key].dates,
+               numeric: Number(key)
+           });
+       }
+   }
+
+   duplicates.sort((a,b)=>a.numeric - b.numeric);
+
+   let maxDates = 0;
+
+   duplicates.forEach(x=>{
+       if(x.dates.length > maxDates){
+           maxDates = x.dates.length;
+       }
+   });
+
+   let html = `
+   <div class="section">
+       <h2>Zdublowane poziomy</h2>
+
+       <table>
+           <thead>
+               <tr>
+                   <th>Poziom</th>
+                   <th>Ilość</th>
+   `;
+
+   for(let i=1; i<=maxDates; i++){
+
+       html += `<th>Data ${i}</th>`;
+   }
+
+   html += `
+               </tr>
+           </thead>
+           <tbody>
+   `;
+
+   for(const row of duplicates){
+
+       let rowClass = "";
+
+       if(row.count === 2){
+           rowClass = "double";
+       }
+       else if(row.count === 3){
+           rowClass = "triple";
+       }
+       else if(row.count === 4){
+           rowClass = "quad";
+       }
+       else{
+           rowClass = "many";
+       }
+
+       html += `<tr class="${rowClass}">`;
+
+       html += `
+           <td>${row.level}</td>
+           <td>${row.count}</td>
+       `;
+
+       for(let i=0; i<maxDates; i++){
+
+           html += `<td>${row.dates[i] || ""}</td>`;
+       }
+
+       html += `</tr>`;
+   }
+
+   html += `
+           </tbody>
+       </table>
+   </div>
+   `;
+
+   document.getElementById("results").innerHTML = html;
+
+   const unique = new Set(data.map(x=>x.levelNormalized)).size;
+
+   updateStats(
+       data.length,
+       unique,
+       data.length - unique
+   );
+}
+
+</script>
+
+</body>
+</html>
+
