@@ -30,7 +30,7 @@ h1{
 }
 
 /* =========================
-   OKNO WKLEJANIA DANYCH
+   OKNO WKLEJANIA
 ========================= */
 
 textarea{
@@ -71,7 +71,7 @@ button:hover{
 }
 
 /* =========================
-   SEKCJE WYNIKÓW
+   SEKCJE
 ========================= */
 
 .section{
@@ -105,7 +105,7 @@ th{
 }
 
 /* =========================
-   KOLORY DUBLI
+   KOLORY
 ========================= */
 
 .double{
@@ -122,6 +122,10 @@ th{
 
 .many{
     background:#ce93d8;
+}
+
+.cluster{
+    background:#c8e6c9;
 }
 
 /* =========================
@@ -142,7 +146,7 @@ th{
 <h1>Sorter Poziomów Cenowych</h1>
 
 <p>
-Wklej dane w formacie:
+Wklej dane:
 </p>
 
 <pre>
@@ -152,7 +156,7 @@ Wklej dane w formacie:
 </pre>
 
 <!-- =========================
-     OKNO DANYCH
+     DANE WEJŚCIOWE
 ========================= -->
 
 <textarea id="inputData" placeholder="Wklej dane tutaj..."></textarea>
@@ -163,22 +167,22 @@ Wklej dane w formacie:
 
 <div class="buttons">
 
-    <!-- SORTOWANIE -->
     <button onclick="sortLevels()">
         Sortuj od najmniejszej do największej
     </button>
 
-    <!-- DUBLE -->
     <button onclick="showDuplicates()">
         Pokaż zdublowane poziomy
     </button>
 
-    <!-- ANALIZA RÓŻNIC -->
     <button onclick="analyzeDifferences()">
         Analiza różnic
     </button>
 
-    <!-- KOPIOWANIE -->
+    <button onclick="detectClusters()">
+        Wykryj klastry
+    </button>
+
     <button onclick="copyResults()">
         Kopiuj wynik
     </button>
@@ -230,8 +234,6 @@ function parseInput(){
         const date = parts[0];
 
         const levelRaw = parts[1];
-
-        // Zamiana przecinka na kropkę
 
         const normalized = levelRaw.replace(",", ".");
 
@@ -347,7 +349,7 @@ function sortLevels(){
 }
 
 /* =====================================================
-   DUBLE / TRIPLE / CZWORAKI+
+   DUBLE
 ===================================================== */
 
 function showDuplicates(){
@@ -501,17 +503,11 @@ function analyzeDifferences(){
 
     if(data.length === 0) return;
 
-    // Sortowanie poziomów
-
     const sorted = [...data].sort(
         (a,b)=>a.levelNumber - b.levelNumber
     );
 
-    // Obiekt częstotliwości
-
     const frequencyMap = {};
-
-    // Liczenie różnic
 
     for(let i = 1; i < sorted.length; i++){
 
@@ -519,13 +515,9 @@ function analyzeDifferences(){
 
         const previous = sorted[i - 1].levelNumber;
 
-        // Różnica
-
         const difference = (
             current - previous
         ).toFixed(5);
-
-        // Liczenie wystąpień
 
         if(!frequencyMap[difference]){
 
@@ -534,8 +526,6 @@ function analyzeDifferences(){
 
         frequencyMap[difference]++;
     }
-
-    // Zamiana na tablicę
 
     const frequencyArray = [];
 
@@ -549,13 +539,9 @@ function analyzeDifferences(){
         });
     }
 
-    // Sortowanie po częstotliwości
-
     frequencyArray.sort(
         (a,b)=>b.count - a.count
     );
-
-    // Budowa tabeli
 
     let html = `
 
@@ -593,20 +579,132 @@ function analyzeDifferences(){
     `;
 
     document.getElementById("results").innerHTML = html;
-
-    const unique = new Set(
-        data.map(x=>x.levelNormalized)
-    ).size;
-
-    updateStats(
-        data.length,
-        unique,
-        data.length - unique
-    );
 }
 
 /* =====================================================
-   KOPIOWANIE WYNIKU
+   WYKRYWANIE KLASTRÓW
+===================================================== */
+
+function detectClusters(){
+
+    const data = parseInput();
+
+    if(data.length === 0) return;
+
+    const sorted = [...data].sort(
+        (a,b)=>a.levelNumber - b.levelNumber
+    );
+
+    // Maksymalna odległość między poziomami
+    // aby należały do jednego klastra
+
+    const clusterDistance = 0.01000;
+
+    const clusters = [];
+
+    let currentCluster = [];
+
+    for(let i = 0; i < sorted.length; i++){
+
+        const current = sorted[i];
+
+        if(currentCluster.length === 0){
+
+            currentCluster.push(current);
+            continue;
+        }
+
+        const previous =
+            currentCluster[currentCluster.length - 1];
+
+        const difference =
+            current.levelNumber - previous.levelNumber;
+
+        // Jeśli poziomy są blisko siebie
+
+        if(difference <= clusterDistance){
+
+            currentCluster.push(current);
+        }
+        else{
+
+            // Zapis klastra
+
+            if(currentCluster.length >= 2){
+
+                clusters.push([...currentCluster]);
+            }
+
+            // Nowy klaster
+
+            currentCluster = [current];
+        }
+    }
+
+    // Ostatni klaster
+
+    if(currentCluster.length >= 2){
+
+        clusters.push(currentCluster);
+    }
+
+    let html = `
+
+    <div class="section">
+
+        <h2>Wykryte klastry</h2>
+
+        <table>
+
+            <thead>
+                <tr>
+                    <th>Klaster</th>
+                    <th>Ilość poziomów</th>
+                    <th>Min poziom</th>
+                    <th>Max poziom</th>
+                    <th>Wysokość klastra</th>
+                </tr>
+            </thead>
+
+            <tbody>
+    `;
+
+    for(let i = 0; i < clusters.length; i++){
+
+        const cluster = clusters[i];
+
+        const min =
+            cluster[0].levelNumber;
+
+        const max =
+            cluster[cluster.length - 1].levelNumber;
+
+        const height =
+            (max - min).toFixed(5);
+
+        html += `
+            <tr class="cluster">
+                <td>${i + 1}</td>
+                <td>${cluster.length}</td>
+                <td>${min.toFixed(5)}</td>
+                <td>${max.toFixed(5)}</td>
+                <td>${height}</td>
+            </tr>
+        `;
+    }
+
+    html += `
+            </tbody>
+        </table>
+
+    </div>
+    `;
+
+    document.getElementById("results").innerHTML = html;
+}
+
+/* =====================================================
+   KOPIOWANIE
 ===================================================== */
 
 function copyResults(){
