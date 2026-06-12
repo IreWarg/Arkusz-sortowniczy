@@ -591,18 +591,24 @@ function detectClusters(){
 
     if(data.length === 0) return;
 
+    // SORTOWANIE
+
     const sorted = [...data].sort(
         (a,b)=>a.levelNumber - b.levelNumber
     );
 
     // Maksymalna odległość między poziomami
-    // aby należały do jednego klastra
+    // dla jednego klastra
 
     const clusterDistance = 0.01000;
 
     const clusters = [];
 
     let currentCluster = [];
+
+    // =================================================
+    // BUDOWANIE KLASTRÓW
+    // =================================================
 
     for(let i = 0; i < sorted.length; i++){
 
@@ -628,25 +634,89 @@ function detectClusters(){
         }
         else{
 
-            // Zapis klastra
+            // ZAPIS KLASTRA
 
             if(currentCluster.length >= 2){
 
-                clusters.push([...currentCluster]);
+                const min =
+                    currentCluster[0].levelNumber;
+
+                const max =
+                    currentCluster[currentCluster.length - 1].levelNumber;
+
+                const height =
+                    max - min;
+
+                clusters.push({
+
+                    levels: [...currentCluster],
+
+                    count: currentCluster.length,
+
+                    min: min,
+
+                    max: max,
+
+                    height: height
+                });
             }
 
-            // Nowy klaster
+            // NOWY KLASTER
 
             currentCluster = [current];
         }
     }
 
-    // Ostatni klaster
+    // OSTATNI KLASTER
 
     if(currentCluster.length >= 2){
 
-        clusters.push(currentCluster);
+        const min =
+            currentCluster[0].levelNumber;
+
+        const max =
+            currentCluster[currentCluster.length - 1].levelNumber;
+
+        const height =
+            max - min;
+
+        clusters.push({
+
+            levels: [...currentCluster],
+
+            count: currentCluster.length,
+
+            min: min,
+
+            max: max,
+
+            height: height
+        });
     }
+
+    // =================================================
+    // SORTOWANIE:
+    // 1. NAJWIĘKSZA ILOŚĆ POZIOMÓW
+    // 2. NAJMNIEJSZA WYSOKOŚĆ
+    // =================================================
+
+    clusters.sort((a,b)=>{
+
+        // Najpierw ilość poziomów
+
+        if(b.count !== a.count){
+
+            return b.count - a.count;
+        }
+
+        // Potem wysokość klastra
+
+        return a.height - b.height;
+    });
+
+    // =================================================
+    // TABELA
+    // =================================================
 
     let html = `
 
@@ -673,22 +743,19 @@ function detectClusters(){
 
         const cluster = clusters[i];
 
-        const min =
-            cluster[0].levelNumber;
-
-        const max =
-            cluster[cluster.length - 1].levelNumber;
-
-        const height =
-            (max - min).toFixed(5);
-
         html += `
             <tr class="cluster">
+
                 <td>${i + 1}</td>
-                <td>${cluster.length}</td>
-                <td>${min.toFixed(5)}</td>
-                <td>${max.toFixed(5)}</td>
-                <td>${height}</td>
+
+                <td>${cluster.count}</td>
+
+                <td>${cluster.min.toFixed(5)}</td>
+
+                <td>${cluster.max.toFixed(5)}</td>
+
+                <td>${cluster.height.toFixed(5)}</td>
+
             </tr>
         `;
     }
