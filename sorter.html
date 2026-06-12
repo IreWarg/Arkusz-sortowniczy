@@ -105,7 +105,7 @@ th{
 }
 
 /* =========================
-   KOLORY POWTÓRZEŃ
+   KOLORY DUBLI
 ========================= */
 
 .double{
@@ -173,6 +173,11 @@ Wklej dane w formacie:
         Pokaż zdublowane poziomy
     </button>
 
+    <!-- ANALIZA RÓŻNIC -->
+    <button onclick="analyzeDifferences()">
+        Analiza różnic
+    </button>
+
     <!-- KOPIOWANIE -->
     <button onclick="copyResults()">
         Kopiuj wynik
@@ -195,7 +200,6 @@ Wklej dane w formacie:
 <script>
 
 /* =====================================================
-   FUNKCJA:
    WCZYTYWANIE DANYCH
 ===================================================== */
 
@@ -219,8 +223,6 @@ function parseInput(){
 
         if(!line) continue;
 
-        // Rozdzielenie po spacjach/tabach
-
         const parts = line.split(/\s+/);
 
         if(parts.length < 2) continue;
@@ -232,8 +234,6 @@ function parseInput(){
         // Zamiana przecinka na kropkę
 
         const normalized = levelRaw.replace(",", ".");
-
-        // Liczba do obliczeń
 
         const levelNumber = Number(normalized);
 
@@ -255,7 +255,6 @@ function parseInput(){
 }
 
 /* =====================================================
-   FUNKCJA:
    STATYSTYKI
 ===================================================== */
 
@@ -271,8 +270,7 @@ function updateStats(total, unique, duplicates){
 }
 
 /* =====================================================
-   FUNKCJA:
-   SORTOWANIE + RÓŻNICE
+   SORTOWANIE
 ===================================================== */
 
 function sortLevels(){
@@ -280,8 +278,6 @@ function sortLevels(){
     const data = parseInput();
 
     if(data.length === 0) return;
-
-    // Sortowanie numeryczne
 
     const sorted = [...data].sort(
         (a,b)=>a.levelNumber - b.levelNumber
@@ -306,15 +302,11 @@ function sortLevels(){
             <tbody>
     `;
 
-    // Dodawanie wierszy
-
     for(let i = 0; i < sorted.length; i++){
 
         const row = sorted[i];
 
         let difference = "---";
-
-        // Obliczanie różnicy
 
         if(i > 0){
 
@@ -355,7 +347,6 @@ function sortLevels(){
 }
 
 /* =====================================================
-   FUNKCJA:
    DUBLE / TRIPLE / CZWORAKI+
 ===================================================== */
 
@@ -366,8 +357,6 @@ function showDuplicates(){
     if(data.length === 0) return;
 
     const map = {};
-
-    // Grupowanie poziomów
 
     for(const row of data){
 
@@ -388,8 +377,6 @@ function showDuplicates(){
 
     const duplicates = [];
 
-    // Szukanie wszystkiego >=2
-
     for(const key in map){
 
         if(map[key].dates.length >= 2){
@@ -407,13 +394,9 @@ function showDuplicates(){
         }
     }
 
-    // Sortowanie wyników
-
     duplicates.sort(
         (a,b)=>a.numeric - b.numeric
     );
-
-    // Maksymalna ilość dat
 
     let maxDates = 0;
 
@@ -440,8 +423,6 @@ function showDuplicates(){
                     <th>Ilość</th>
     `;
 
-    // Dynamiczne kolumny dat
-
     for(let i=1; i<=maxDates; i++){
 
         html += `<th>Data ${i}</th>`;
@@ -454,13 +435,9 @@ function showDuplicates(){
             <tbody>
     `;
 
-    // Wiersze
-
     for(const row of duplicates){
 
         let rowClass = "";
-
-        // Kolory
 
         if(row.count === 2){
 
@@ -485,8 +462,6 @@ function showDuplicates(){
             <td>${row.level}</td>
             <td>${row.count}</td>
         `;
-
-        // Daty
 
         for(let i=0; i<maxDates; i++){
 
@@ -517,8 +492,121 @@ function showDuplicates(){
 }
 
 /* =====================================================
-   FUNKCJA:
-   KOPIOWANIE WYNIKÓW
+   ANALIZA RÓŻNIC
+===================================================== */
+
+function analyzeDifferences(){
+
+    const data = parseInput();
+
+    if(data.length === 0) return;
+
+    // Sortowanie poziomów
+
+    const sorted = [...data].sort(
+        (a,b)=>a.levelNumber - b.levelNumber
+    );
+
+    // Obiekt częstotliwości
+
+    const frequencyMap = {};
+
+    // Liczenie różnic
+
+    for(let i = 1; i < sorted.length; i++){
+
+        const current = sorted[i].levelNumber;
+
+        const previous = sorted[i - 1].levelNumber;
+
+        // Różnica
+
+        const difference = (
+            current - previous
+        ).toFixed(5);
+
+        // Liczenie wystąpień
+
+        if(!frequencyMap[difference]){
+
+            frequencyMap[difference] = 0;
+        }
+
+        frequencyMap[difference]++;
+    }
+
+    // Zamiana na tablicę
+
+    const frequencyArray = [];
+
+    for(const key in frequencyMap){
+
+        frequencyArray.push({
+
+            difference: key,
+
+            count: frequencyMap[key]
+        });
+    }
+
+    // Sortowanie po częstotliwości
+
+    frequencyArray.sort(
+        (a,b)=>b.count - a.count
+    );
+
+    // Budowa tabeli
+
+    let html = `
+
+    <div class="section">
+
+        <h2>Analiza różnic</h2>
+
+        <table>
+
+            <thead>
+                <tr>
+                    <th>Różnica</th>
+                    <th>Częstotliwość</th>
+                </tr>
+            </thead>
+
+            <tbody>
+    `;
+
+    for(const row of frequencyArray){
+
+        html += `
+            <tr>
+                <td>${row.difference}</td>
+                <td>${row.count}</td>
+            </tr>
+        `;
+    }
+
+    html += `
+            </tbody>
+        </table>
+
+    </div>
+    `;
+
+    document.getElementById("results").innerHTML = html;
+
+    const unique = new Set(
+        data.map(x=>x.levelNormalized)
+    ).size;
+
+    updateStats(
+        data.length,
+        unique,
+        data.length - unique
+    );
+}
+
+/* =====================================================
+   KOPIOWANIE WYNIKU
 ===================================================== */
 
 function copyResults(){
