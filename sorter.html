@@ -1,18 +1,19 @@
+dla sortera
 <!DOCTYPE html>
 <html lang="pl">
 
 <head>
 
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <title>Sorter Poziomów Cenowych</title>
 
 <style>
 
-/* =========================
-   WYGLĄD STRONY
-========================= */
+/* =====================================================
+   WYGLĄD CAŁEJ STRONY
+===================================================== */
 
 body{
     font-family: Arial, sans-serif;
@@ -21,17 +22,17 @@ body{
     color:#222;
 }
 
-/* =========================
+/* =====================================================
    TYTUŁ
-========================= */
+===================================================== */
 
 h1{
     margin-bottom:10px;
 }
 
-/* =========================
-   OKNO WKLEJANIA
-========================= */
+/* =====================================================
+   OKNO WKLEJANIA DANYCH
+===================================================== */
 
 textarea{
     width:100%;
@@ -42,11 +43,12 @@ textarea{
     border-radius:8px;
     resize:vertical;
     background:white;
+    box-sizing:border-box;
 }
 
-/* =========================
+/* =====================================================
    PRZYCISKI
-========================= */
+===================================================== */
 
 .buttons{
     margin-top:15px;
@@ -70,9 +72,9 @@ button:hover{
     opacity:0.9;
 }
 
-/* =========================
-   SEKCJE
-========================= */
+/* =====================================================
+   SEKCJE WYNIKÓW
+===================================================== */
 
 .section{
     background:white;
@@ -83,14 +85,14 @@ button:hover{
     box-shadow:0 2px 8px rgba(0,0,0,0.08);
 }
 
-/* =========================
+/* =====================================================
    TABELA
-========================= */
+===================================================== */
 
 table{
     border-collapse:collapse;
     width:100%;
-    min-width:900px;
+    min-width:700px;
 }
 
 th, td{
@@ -104,9 +106,9 @@ th{
     background:#f0f0f0;
 }
 
-/* =========================
-   KOLORY
-========================= */
+/* =====================================================
+   KOLORY DUBLI
+===================================================== */
 
 .double{
     background:#fff59d;
@@ -124,17 +126,57 @@ th{
     background:#ce93d8;
 }
 
+/* =====================================================
+   KOLOR KLASTRÓW
+===================================================== */
+
 .cluster{
     background:#c8e6c9;
 }
 
-/* =========================
+/* =====================================================
    STATYSTYKI
-========================= */
+===================================================== */
 
 .stats{
     margin-top:10px;
     font-size:14px;
+}
+
+/* =====================================================
+   KOMUNIKAT DLA FUNKCJI BRAKUJĄCYCH DAT
+===================================================== */
+
+.warning{
+    background:#fff3cd;
+    border:1px solid #ffe69c;
+    padding:12px;
+    border-radius:8px;
+    margin-bottom:15px;
+}
+
+/* =====================================================
+   LISTA BRAKUJĄCYCH DAT
+===================================================== */
+
+.missing-list{
+    font-family:monospace;
+    white-space:pre;
+    line-height:1.5;
+    background:#fafafa;
+    padding:15px;
+    border:1px solid #ddd;
+    border-radius:8px;
+}
+
+/* =====================================================
+   LICZNIK BRAKÓW
+===================================================== */
+
+.missing-count{
+    font-size:18px;
+    font-weight:bold;
+    margin-bottom:15px;
 }
 
 </style>
@@ -155,61 +197,79 @@ Wklej dane:
 2020.02.12    0.76549
 </pre>
 
-<!-- =========================
-     DANE WEJŚCIOWE
-========================= -->
+<!-- =================================================
+     OKNO DANYCH
+================================================= -->
 
-<textarea id="inputData" placeholder="Wklej dane tutaj..."></textarea>
+<textarea
+    id="inputData"
+    placeholder="Wklej dane tutaj..."
+></textarea>
 
-<!-- =========================
+<!-- =================================================
      PRZYCISKI
-========================= -->
+================================================= -->
 
 <div class="buttons">
 
+    <!-- SORTOWANIE POZIOMÓW -->
     <button onclick="sortLevels()">
         Sortuj od najmniejszej do największej
     </button>
 
+    <!-- DUBLE / TRIPLE / CZWORAKI -->
     <button onclick="showDuplicates()">
         Pokaż zdublowane poziomy
     </button>
 
+    <!-- ANALIZA RÓŻNIC -->
     <button onclick="analyzeDifferences()">
         Analiza różnic
     </button>
 
+    <!-- WYKRYWANIE KLASTRÓW -->
     <button onclick="detectClusters()">
         Wykryj klastry
     </button>
 
+    <!-- NOWA FUNKCJA:
+         BRAKUJĄCE DATY I GODZINY -->
+    <button onclick="showMissingDateTimes()">
+        Pokaż brakujące daty i godziny
+    </button>
+
+    <!-- KOPIOWANIE WYNIKU -->
     <button onclick="copyResults()">
         Kopiuj wynik
     </button>
 
 </div>
 
-<!-- =========================
+<!-- =================================================
      STATYSTYKI
-========================= -->
+================================================= -->
 
 <div class="stats" id="stats"></div>
 
-<!-- =========================
+<!-- =================================================
      WYNIKI
-========================= -->
+================================================= -->
 
 <div id="results"></div>
 
+
 <script>
 
+
 /* =====================================================
-   WCZYTYWANIE DANYCH
+   FUNKCJA:
+   WCZYTYWANIE DANYCH DLA POZIOMÓW CENOWYCH
 ===================================================== */
 
 function parseInput(){
 
-    const raw = document.getElementById("inputData").value.trim();
+    const raw =
+        document.getElementById("inputData").value.trim();
 
     if(!raw){
 
@@ -217,7 +277,7 @@ function parseInput(){
         return [];
     }
 
-    const lines = raw.split("\n");
+    const lines = raw.split(/\r?\n/);
 
     const data = [];
 
@@ -235,9 +295,11 @@ function parseInput(){
 
         const levelRaw = parts[1];
 
-        const normalized = levelRaw.replace(",", ".");
+        const normalized =
+            levelRaw.replace(",", ".");
 
-        const levelNumber = Number(normalized);
+        const levelNumber =
+            Number(normalized);
 
         if(isNaN(levelNumber)) continue;
 
@@ -256,23 +318,38 @@ function parseInput(){
     return data;
 }
 
+
 /* =====================================================
+   FUNKCJA:
    STATYSTYKI
 ===================================================== */
 
-function updateStats(total, unique, duplicates){
+function updateStats(
+    total,
+    unique,
+    duplicates
+){
 
     document.getElementById("stats").innerHTML = `
+
         <b>Wiersze wejściowe:</b> ${total}
+
         &nbsp;&nbsp; | &nbsp;&nbsp;
+
         <b>Unikalne poziomy:</b> ${unique}
+
         &nbsp;&nbsp; | &nbsp;&nbsp;
+
         <b>Poziomy zdublowane:</b> ${duplicates}
+
     `;
 }
 
+
 /* =====================================================
-   SORTOWANIE
+   FUNKCJA:
+   SORTOWANIE OD NAJMNIEJSZEGO DO NAJWIĘKSZEGO
+   + RÓŻNICA MIĘDZY POZIOMAMI
 ===================================================== */
 
 function sortLevels(){
@@ -294,17 +371,27 @@ function sortLevels(){
         <table>
 
             <thead>
+
                 <tr>
+
                     <th>Data</th>
+
                     <th>Poziom</th>
+
                     <th>Różnica</th>
+
                 </tr>
+
             </thead>
 
             <tbody>
     `;
 
-    for(let i = 0; i < sorted.length; i++){
+    for(
+        let i = 0;
+        i < sorted.length;
+        i++
+    ){
 
         const row = sorted[i];
 
@@ -312,34 +399,49 @@ function sortLevels(){
 
         if(i > 0){
 
-            const previous = sorted[i - 1];
+            const previous =
+                sorted[i - 1];
 
             difference = (
-                row.levelNumber - previous.levelNumber
+                row.levelNumber -
+                previous.levelNumber
             ).toFixed(5);
         }
 
         html += `
+
             <tr>
+
                 <td>${row.date}</td>
+
                 <td>${row.levelRaw}</td>
+
                 <td>${difference}</td>
+
             </tr>
+
         `;
     }
 
     html += `
+
             </tbody>
+
         </table>
 
     </div>
+
     `;
 
-    document.getElementById("results").innerHTML = html;
+    document.getElementById("results")
+        .innerHTML = html;
 
-    const unique = new Set(
-        sorted.map(x=>x.levelNormalized)
-    ).size;
+    const unique =
+        new Set(
+            sorted.map(
+                x=>x.levelNormalized
+            )
+        ).size;
 
     updateStats(
         sorted.length,
@@ -348,8 +450,10 @@ function sortLevels(){
     );
 }
 
+
 /* =====================================================
-   DUBLE
+   FUNKCJA:
+   POKAŻ DUBLE / TRIPLE / CZWORAKI / WIĘCEJ
 ===================================================== */
 
 function showDuplicates(){
@@ -362,7 +466,8 @@ function showDuplicates(){
 
     for(const row of data){
 
-        const key = row.levelNormalized;
+        const key =
+            row.levelNormalized;
 
         if(!map[key]){
 
@@ -371,27 +476,36 @@ function showDuplicates(){
                 level: row.levelRaw,
 
                 dates: []
+
             };
         }
 
-        map[key].dates.push(row.date);
+        map[key].dates.push(
+            row.date
+        );
     }
 
     const duplicates = [];
 
     for(const key in map){
 
-        if(map[key].dates.length >= 2){
+        if(
+            map[key].dates.length >= 2
+        ){
 
             duplicates.push({
 
                 level: map[key].level,
 
-                count: map[key].dates.length,
+                count:
+                    map[key].dates.length,
 
-                dates: map[key].dates,
+                dates:
+                    map[key].dates,
 
-                numeric: Number(key)
+                numeric:
+                    Number(key)
+
             });
         }
     }
@@ -404,9 +518,13 @@ function showDuplicates(){
 
     duplicates.forEach(x=>{
 
-        if(x.dates.length > maxDates){
+        if(
+            x.dates.length >
+            maxDates
+        ){
 
-            maxDates = x.dates.length;
+            maxDates =
+                x.dates.length;
         }
     });
 
@@ -419,72 +537,109 @@ function showDuplicates(){
         <table>
 
             <thead>
+
                 <tr>
 
                     <th>Poziom</th>
+
                     <th>Ilość</th>
+
     `;
 
-    for(let i=1; i<=maxDates; i++){
+    for(
+        let i=1;
+        i<=maxDates;
+        i++
+    ){
 
-        html += `<th>Data ${i}</th>`;
+        html +=
+            `<th>Data ${i}</th>`;
     }
 
     html += `
+
                 </tr>
+
             </thead>
 
             <tbody>
+
     `;
 
-    for(const row of duplicates){
+    for(
+        const row of duplicates
+    ){
 
         let rowClass = "";
 
         if(row.count === 2){
 
             rowClass = "double";
+
         }
         else if(row.count === 3){
 
             rowClass = "triple";
+
         }
         else if(row.count === 4){
 
             rowClass = "quad";
+
         }
         else{
 
             rowClass = "many";
         }
 
-        html += `<tr class="${rowClass}">`;
+        html +=
+            `<tr class="${rowClass}">`;
 
         html += `
+
             <td>${row.level}</td>
+
             <td>${row.count}</td>
+
         `;
 
-        for(let i=0; i<maxDates; i++){
+        for(
+            let i=0;
+            i<maxDates;
+            i++
+        ){
 
-            html += `<td>${row.dates[i] || ""}</td>`;
+            html += `
+
+                <td>
+                    ${row.dates[i] || ""}
+                </td>
+
+            `;
         }
 
         html += `</tr>`;
     }
 
     html += `
+
             </tbody>
+
         </table>
 
     </div>
+
     `;
 
-    document.getElementById("results").innerHTML = html;
+    document.getElementById("results")
+        .innerHTML = html;
 
-    const unique = new Set(
-        data.map(x=>x.levelNormalized)
-    ).size;
+    const unique =
+        new Set(
+            data.map(
+                x=>x.levelNormalized
+            )
+        ).size;
 
     updateStats(
         data.length,
@@ -493,7 +648,9 @@ function showDuplicates(){
     );
 }
 
+
 /* =====================================================
+   FUNKCJA:
    ANALIZA RÓŻNIC
 ===================================================== */
 
@@ -509,17 +666,28 @@ function analyzeDifferences(){
 
     const frequencyMap = {};
 
-    for(let i = 1; i < sorted.length; i++){
+    for(
+        let i=1;
+        i<sorted.length;
+        i++
+    ){
 
-        const current = sorted[i].levelNumber;
+        const current =
+            sorted[i].levelNumber;
 
-        const previous = sorted[i - 1].levelNumber;
+        const previous =
+            sorted[i-1].levelNumber;
 
         const difference = (
-            current - previous
+
+            current -
+            previous
+
         ).toFixed(5);
 
-        if(!frequencyMap[difference]){
+        if(
+            !frequencyMap[difference]
+        ){
 
             frequencyMap[difference] = 0;
         }
@@ -529,13 +697,17 @@ function analyzeDifferences(){
 
     const frequencyArray = [];
 
-    for(const key in frequencyMap){
+    for(
+        const key in frequencyMap
+    ){
 
         frequencyArray.push({
 
             difference: key,
 
-            count: frequencyMap[key]
+            count:
+                frequencyMap[key]
+
         });
     }
 
@@ -552,36 +724,59 @@ function analyzeDifferences(){
         <table>
 
             <thead>
+
                 <tr>
+
                     <th>Różnica</th>
+
                     <th>Częstotliwość</th>
+
                 </tr>
+
             </thead>
 
             <tbody>
+
     `;
 
-    for(const row of frequencyArray){
+    for(
+        const row of frequencyArray
+    ){
 
         html += `
+
             <tr>
-                <td>${row.difference}</td>
-                <td>${row.count}</td>
+
+                <td>
+                    ${row.difference}
+                </td>
+
+                <td>
+                    ${row.count}
+                </td>
+
             </tr>
+
         `;
     }
 
     html += `
+
             </tbody>
+
         </table>
 
     </div>
+
     `;
 
-    document.getElementById("results").innerHTML = html;
+    document.getElementById("results")
+        .innerHTML = html;
 }
 
+
 /* =====================================================
+   FUNKCJA:
    WYKRYWANIE KLASTRÓW
 ===================================================== */
 
@@ -591,132 +786,162 @@ function detectClusters(){
 
     if(data.length === 0) return;
 
-    // SORTOWANIE
-
     const sorted = [...data].sort(
         (a,b)=>a.levelNumber - b.levelNumber
     );
 
-    // Maksymalna odległość między poziomami
-    // dla jednego klastra
+    /*
+       Maksymalna odległość pomiędzy
+       kolejnymi poziomami należącymi
+       do jednego klastra.
+    */
 
-    const clusterDistance = 0.01000;
+    const clusterDistance =
+        0.01000;
 
     const clusters = [];
 
     let currentCluster = [];
 
-    // =================================================
-    // BUDOWANIE KLASTRÓW
-    // =================================================
+    for(
+        let i=0;
+        i<sorted.length;
+        i++
+    ){
 
-    for(let i = 0; i < sorted.length; i++){
+        const current =
+            sorted[i];
 
-        const current = sorted[i];
+        if(
+            currentCluster.length === 0
+        ){
 
-        if(currentCluster.length === 0){
+            currentCluster.push(
+                current
+            );
 
-            currentCluster.push(current);
             continue;
         }
 
         const previous =
-            currentCluster[currentCluster.length - 1];
+            currentCluster[
+                currentCluster.length - 1
+            ];
 
         const difference =
-            current.levelNumber - previous.levelNumber;
+            current.levelNumber -
+            previous.levelNumber;
 
-        // Jeśli poziomy są blisko siebie
+        if(
+            difference <=
+            clusterDistance
+        ){
 
-        if(difference <= clusterDistance){
+            currentCluster.push(
+                current
+            );
 
-            currentCluster.push(current);
         }
         else{
 
-            // ZAPIS KLASTRA
-
-            if(currentCluster.length >= 2){
+            if(
+                currentCluster.length >= 2
+            ){
 
                 const min =
-                    currentCluster[0].levelNumber;
+                    currentCluster[0]
+                        .levelNumber;
 
                 const max =
-                    currentCluster[currentCluster.length - 1].levelNumber;
+                    currentCluster[
+                        currentCluster.length - 1
+                    ].levelNumber;
 
                 const height =
                     max - min;
 
                 clusters.push({
 
-                    levels: [...currentCluster],
+                    levels:
+                        [...currentCluster],
 
-                    count: currentCluster.length,
+                    count:
+                        currentCluster.length,
 
-                    min: min,
+                    min:
+                        min,
 
-                    max: max,
+                    max:
+                        max,
 
-                    height: height
+                    height:
+                        height
                 });
             }
 
-            // NOWY KLASTER
-
-            currentCluster = [current];
+            currentCluster =
+                [current];
         }
     }
 
-    // OSTATNI KLASTER
+    /*
+       Ostatni klaster.
+    */
 
-    if(currentCluster.length >= 2){
+    if(
+        currentCluster.length >= 2
+    ){
 
         const min =
-            currentCluster[0].levelNumber;
+            currentCluster[0]
+                .levelNumber;
 
         const max =
-            currentCluster[currentCluster.length - 1].levelNumber;
+            currentCluster[
+                currentCluster.length - 1
+            ].levelNumber;
 
         const height =
             max - min;
 
         clusters.push({
 
-            levels: [...currentCluster],
+            levels:
+                [...currentCluster],
 
-            count: currentCluster.length,
+            count:
+                currentCluster.length,
 
-            min: min,
+            min:
+                min,
 
-            max: max,
+            max:
+                max,
 
-            height: height
+            height:
+                height
         });
     }
 
-    // =================================================
-    // SORTOWANIE:
-    // 1. NAJWIĘKSZA ILOŚĆ POZIOMÓW
-    // 2. NAJMNIEJSZA WYSOKOŚĆ
-    // =================================================
+    /*
+       SORTOWANIE KLASTRÓW:
+
+       1. Największa ilość poziomów.
+       2. Przy tej samej ilości
+          najmniejsza wysokość.
+    */
 
     clusters.sort((a,b)=>{
 
-        // Najpierw ilość poziomów
-
-        if(b.count !== a.count){
+        if(
+            b.count !== a.count
+        ){
 
             return b.count - a.count;
         }
 
-        // Potem wysokość klastra
-
         return a.height - b.height;
     });
-
-    // =================================================
-    // TABELA
-    // =================================================
 
     let html = `
 
@@ -727,74 +952,546 @@ function detectClusters(){
         <table>
 
             <thead>
+
                 <tr>
+
                     <th>Klaster</th>
+
                     <th>Ilość poziomów</th>
+
                     <th>Min poziom</th>
+
                     <th>Max poziom</th>
+
                     <th>Wysokość klastra</th>
+
                 </tr>
+
             </thead>
 
             <tbody>
+
     `;
 
-    for(let i = 0; i < clusters.length; i++){
+    for(
+        let i=0;
+        i<clusters.length;
+        i++
+    ){
 
-        const cluster = clusters[i];
+        const cluster =
+            clusters[i];
 
         html += `
+
             <tr class="cluster">
 
-                <td>${i + 1}</td>
+                <td>
+                    ${i + 1}
+                </td>
 
-                <td>${cluster.count}</td>
+                <td>
+                    ${cluster.count}
+                </td>
 
-                <td>${cluster.min.toFixed(5)}</td>
+                <td>
+                    ${cluster.min.toFixed(5)}
+                </td>
 
-                <td>${cluster.max.toFixed(5)}</td>
+                <td>
+                    ${cluster.max.toFixed(5)}
+                </td>
 
-                <td>${cluster.height.toFixed(5)}</td>
+                <td>
+                    ${cluster.height.toFixed(5)}
+                </td>
 
             </tr>
+
         `;
     }
 
     html += `
+
             </tbody>
+
         </table>
 
     </div>
+
     `;
 
-    document.getElementById("results").innerHTML = html;
+    document.getElementById("results")
+        .innerHTML = html;
 }
 
+
 /* =====================================================
-   KOPIOWANIE
+   FUNKCJA:
+   ODCZYT DAT I GODZIN Z DANYCH MINUTOWYCH
+=====================================================
+
+   Ta funkcja jest ODSEPAROWANA od parseInput(),
+   ponieważ nowe dane mają zupełnie inny format:
+
+   2026.08.06 19:54;64673.08;64676.77;...
+
+   Potrzebujemy tutaj wyłącznie:
+
+   2026.08.06 19:54
+===================================================== */
+
+function parseDateTimes(){
+
+    const raw =
+        document.getElementById(
+            "inputData"
+        ).value.trim();
+
+    if(!raw){
+
+        alert("Wklej dane.");
+
+        return [];
+    }
+
+    const lines =
+        raw.split(/\r?\n/);
+
+    const timestamps = [];
+
+    /*
+       Rozpoznawany format:
+
+       RRRR.MM.DD HH:MM
+    */
+
+    const pattern =
+        /^(\d{4}\.\d{2}\.\d{2})\s+(\d{2}):(\d{2})/;
+
+    for(
+        const line of lines
+    ){
+
+        const cleanLine =
+            line.trim();
+
+        if(!cleanLine) continue;
+
+        const match =
+            cleanLine.match(pattern);
+
+        if(!match) continue;
+
+        const date =
+            match[1];
+
+        const hour =
+            Number(match[2]);
+
+        const minute =
+            Number(match[3]);
+
+        /*
+           Kontrola poprawności godziny
+        */
+
+        if(
+            hour < 0 ||
+            hour > 23
+        ){
+
+            continue;
+        }
+
+        /*
+           Kontrola poprawności minuty
+        */
+
+        if(
+            minute < 0 ||
+            minute > 59
+        ){
+
+            continue;
+        }
+
+        /*
+           Zamieniamy datę na zapis
+           zrozumiały dla JavaScript.
+        */
+
+        const isoDate =
+            date.replace(
+                /\./g,
+                "-"
+            );
+
+        const timestamp =
+            new Date(
+                `${isoDate}T${String(hour).padStart(2,"0")}:${String(minute).padStart(2,"0")}:00`
+            );
+
+        if(
+            isNaN(timestamp.getTime())
+        ){
+
+            continue;
+        }
+
+        timestamps.push(
+            timestamp
+        );
+    }
+
+    return timestamps;
+}
+
+
+/* =====================================================
+   FUNKCJA:
+   FORMATOWANIE DATY DO POSTACI:
+
+   2026.08.06 19:54
+===================================================== */
+
+function formatDateTime(date){
+
+    const year =
+        date.getFullYear();
+
+    const month =
+        String(
+            date.getMonth() + 1
+        ).padStart(2,"0");
+
+    const day =
+        String(
+            date.getDate()
+        ).padStart(2,"0");
+
+    const hour =
+        String(
+            date.getHours()
+        ).padStart(2,"0");
+
+    const minute =
+        String(
+            date.getMinutes()
+        ).padStart(2,"0");
+
+    return `${year}.${month}.${day} ${hour}:${minute}`;
+}
+
+
+/* =====================================================
+   FUNKCJA:
+   POKAŻ BRAKUJĄCE DATY I GODZINY
+=====================================================
+
+   Sprawdza każdą kolejną minutę.
+
+   Jeżeli np. mamy:
+
+   19:56
+   20:16
+
+   wypisze:
+
+   19:57
+   19:58
+   ...
+   20:15
+
+   NIE pomija weekendów.
+   Na tym etapie każda luka jest traktowana
+   jako potencjalnie brakująca minuta.
+===================================================== */
+
+function showMissingDateTimes(){
+
+    const timestamps =
+        parseDateTimes();
+
+    if(
+        timestamps.length === 0
+    ){
+
+        return;
+    }
+
+    /*
+       Sortujemy wszystkie znalezione
+       daty i godziny chronologicznie.
+    */
+
+    timestamps.sort(
+        (a,b)=>
+            a.getTime() -
+            b.getTime()
+    );
+
+    /*
+       Usuwamy ewentualne identyczne
+       timestampy, żeby nie powodowały
+       sztucznych problemów.
+    */
+
+    const uniqueTimes = [];
+
+    let previousTime = null;
+
+    for(
+        const currentTime of timestamps
+    ){
+
+        if(
+            previousTime === null ||
+            currentTime.getTime() !==
+            previousTime.getTime()
+        ){
+
+            uniqueTimes.push(
+                currentTime
+            );
+
+            previousTime =
+                currentTime;
+        }
+    }
+
+    /*
+       Tutaj będziemy zapisywać
+       wszystkie brakujące minuty.
+    */
+
+    const missing = [];
+
+    /*
+       Sprawdzamy każdą parę kolejnych
+       zapisanych minut.
+    */
+
+    for(
+        let i=1;
+        i<uniqueTimes.length;
+        i++
+    ){
+
+        const previous =
+            uniqueTimes[i-1];
+
+        const current =
+            uniqueTimes[i];
+
+        /*
+           Różnica czasu w minutach.
+        */
+
+        const difference =
+            Math.round(
+
+                (
+                    current.getTime() -
+                    previous.getTime()
+                )
+                /
+                60000
+
+            );
+
+        /*
+           Jeżeli różnica wynosi:
+
+           1 minuta
+           = niczego nie brakuje.
+
+           2 minuty
+           = brakuje 1 minuty.
+
+           20 minut
+           = brakuje 19 minut.
+        */
+
+        if(
+            difference > 1
+        ){
+
+            /*
+               Zaczynamy od minuty
+               bezpośrednio po poprzednim
+               zapisanym rekordzie.
+            */
+
+            const missingTime =
+                new Date(
+                    previous.getTime()
+                );
+
+            missingTime.setMinutes(
+                missingTime.getMinutes() + 1
+            );
+
+            /*
+               Dodajemy każdą brakującą
+               minutę aż do rekordu
+               poprzedzającego current.
+            */
+
+            while(
+                missingTime.getTime() <
+                current.getTime()
+            ){
+
+                missing.push(
+                    new Date(
+                        missingTime.getTime()
+                    )
+                );
+
+                missingTime.setMinutes(
+                    missingTime.getMinutes() + 1
+                );
+            }
+        }
+    }
+
+    /*
+       Budowanie wyniku.
+    */
+
+    let html = `
+
+    <div class="section">
+
+        <h2>
+            Brakujące daty i godziny
+        </h2>
+
+        <div class="warning">
+
+            <b>⚠️ KRYPTO – TESTOWE</b>
+
+            <br>
+
+            Krypto działa również w weekend.
+
+            <br>
+
+            Forex + indeksy – inne zasady.
+
+            <br>
+
+            Podział instrumentów zostanie
+            dodany później.
+
+        </div>
+
+    `;
+
+    if(
+        missing.length === 0
+    ){
+
+        html += `
+
+            <div class="missing-count">
+
+                Nie znaleziono brakujących minut.
+
+            </div>
+
+            <p>
+                Wszystkie zapisane minuty
+                występują kolejno.
+            </p>
+
+        `;
+
+    }
+    else{
+
+        html += `
+
+            <div class="missing-count">
+
+                Znaleziono brakujących minut:
+                ${missing.length}
+
+            </div>
+
+            <div class="missing-list">
+
+        `;
+
+        for(
+            const date of missing
+        ){
+
+            html +=
+                `${formatDateTime(date)}\n`;
+        }
+
+        html += `
+
+            </div>
+
+        `;
+    }
+
+    html += `
+
+    </div>
+
+    `;
+
+    document.getElementById("results")
+        .innerHTML = html;
+}
+
+
+/* =====================================================
+   FUNKCJA:
+   KOPIOWANIE WYNIKU
 ===================================================== */
 
 function copyResults(){
 
-    const results = document.getElementById("results");
+    const results =
+        document.getElementById(
+            "results"
+        );
 
-    if(!results.innerText.trim()){
+    if(
+        !results.innerText.trim()
+    ){
 
-        alert("Brak wyników do skopiowania.");
+        alert(
+            "Brak wyników do skopiowania."
+        );
+
         return;
     }
 
-    navigator.clipboard.writeText(results.innerText)
+    navigator.clipboard.writeText(
+        results.innerText
+    )
 
-        .then(() => {
+    .then(() => {
 
-            alert("Wynik skopiowany.");
-        })
+        alert(
+            "Wynik skopiowany."
+        );
 
-        .catch(() => {
+    })
 
-            alert("Nie udało się skopiować.");
-        });
+    .catch(() => {
+
+        alert(
+            "Nie udało się skopiować."
+        );
+
+    });
 }
 
 </script>
